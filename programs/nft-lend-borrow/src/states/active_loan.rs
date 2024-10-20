@@ -26,6 +26,9 @@ pub struct ActiveLoan {
     /// Repaid
     pub is_repaid: bool,
 
+    /// Liquidated
+    pub is_liquidated: bool,
+
     /// Bump
     pub bump: u8,
 }

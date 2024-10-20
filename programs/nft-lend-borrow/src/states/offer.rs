@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 #[account]
 pub struct Offer{
     /// Collection
-    pub collection: Pubkey;
+    pub collection: Pubkey,
 
     /// Offer Amount
     pub offer_lamport_amount: u64,

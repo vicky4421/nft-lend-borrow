@@ -34,7 +34,7 @@ pub struct Liquidate<'info> {
     #[account(
         mut,
         constraint = lender_asset_account.mint == asset_mint.key(),
-        constraint = lender_asset_account.owner = lender.key()
+        constraint = lender_asset_account.owner == lender.key()
     )]
     pub lender_asset_account: Account<'info, TokenAccount>,
 

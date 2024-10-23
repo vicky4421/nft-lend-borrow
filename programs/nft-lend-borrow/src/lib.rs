@@ -12,7 +12,6 @@ declare_id!("CXViv1YMFLyt4vRPGCjNxCK4UQZQJSfDAXV1J8HA6kzD");
 
 #[program]
 pub mod nft_lend_borrow {
-    use std::task::Context;
 
     use super::*;
 

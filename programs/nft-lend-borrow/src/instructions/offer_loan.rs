@@ -4,7 +4,7 @@ use anchor_lang::system_program;
 
 pub use crate::states::{CollectionPool, Offer, Vault};
 
-#[derive(accounts)]
+#[derive(Accounts)]
 pub struct OfferLoan<'info> {
     #[account(
         init,

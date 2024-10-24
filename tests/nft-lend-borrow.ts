@@ -49,6 +49,7 @@ describe("nft-lend-borrow", () => {
     "J1S9H3QjnRtBbbuD4HjPV6RpRhwuk4zKbxsnCHuTgh9w"
   );
 
+  // initiate states
   it("Can initialize the state of the world", async () => {
     const transferSig = await provider.connection.requestAirdrop(
       payer.publicKey,
@@ -249,6 +250,141 @@ describe("nft-lend-borrow", () => {
     );
     assert.strictEqual(createdOffer.isLoanTaken, false);
 
+  });
+
+  // borrowing loan
+  let loanStartTs: number;
+  let loanRepayTs: number;
+
+  it("Can borrow loan", async () => {
+    let [activeloan, _activeLoanBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          anchor.utils.bytes.utf8.encode("active-loan"),
+          offerPDA.toBuffer(),
+        ],
+        program.programId
+      );
+    activeLoanPDA = activeloan;
+
+    let [vaultAsset, _vaultAssetBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          anchor.utils.bytes.utf8.encode("valut-asset-account"),
+          offerPDA.toBuffer(),
+        ],
+        program.programId
+      );
+    vaultAssetAccount = vaultAsset;
+
+    let [vaultAuth, _vaultAuthBump] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          collectionPoolPDA.toBuffer(),
+        ],
+        program.programId
+      );
+    vaultAuthorityPDA = vaultAuth;
+
+    const minimumBalanceForRentExemption =
+      await provider.connection.getMinimumBalanceForRentExemption(41);
+
+    await program.methods
+      .borrow(new anchor.BN(minimumBalanceForRentExemption))
+      .accounts({
+        activeLoan: activeLoanPDA,
+        offerLoan: offerPDA,
+        vaultAccount: vaultPDA,
+        vaultAssetAccount: vaultAssetAccount,
+        vaultAuthority: vaultAuthorityPDA,
+        collectionPool: collectionPoolPDA,
+        borrower: borrower.publicKey,
+        borrowerAssetAccount: borrowerAssetAccount,
+        assetMint: assetMint,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        SystemProgram: anchor.web3.SystemProgram.programId,
+        clock: anchor.web3.SYSVAR_CLOCK_PUBKEY
+      })
+      .signers([borrower])
+      .rpc();
+
+    const activeLoan = await program.account.activeLoan.fetch(activeLoanPDA);
+
+    assert.strictEqual(
+      activeLoan.collection.toBase58(),
+      borrower.publicKey.toBase58()
+    );
+
+    assert.strictEqual(
+      activeLoan.collection.toBase58(),
+      collectionPoolPDA.toBase58()
+    );
+
+    assert.strictEqual(
+      activeLoan.lender.toBase58(),
+      lender.publicKey.toBase58()
+    );
+
+    assert.strictEqual(activeLoan.mint.toBase58(), assetMint.toBase58());
+
+    assert.strictEqual(
+      activeLoan.offerAccount.toBase58(),
+      offerPDA.toBase58()
+    );
+
+    assert.strictEqual(
+      activeLoan.repayTs.toNumber(),
+      activeLoan.loanTs.toNumber() + loanDuration
+    );
+
+    assert.strictEqual(activeLoan.isLiquidated, false);
+    assert.strictEqual(activeLoan.isRepaid, false);
+
+    const offerAccount = await program.account.offer.fetch(offerPDA);
+
+    assert.strictEqual(
+      offerAccount.borrower.toBase58(),
+      borrower.publicKey.toBase58()
+    );
+
+    assert.strictEqual(offerAccount.isLoanTaken, true);
+
+    const vaultTokenAccount = await provider.connection.getAccountInfo(
+      vaultPDA
+    );
+
+    const borrowerAccount = await provider.connection.getAccountInfo(
+      borrower.publicKey
+    );
+
+    const minimumBalanceForRentExemptionForOfferAccount =
+      await provider.connection.getMinimumBalanceForRentExemption(200);
+
+    assert.strictEqual(
+      vaultTokenAccount.lamports,
+      minimumBalanceForRentExemption
+    );
+
+    assert.isAbove(
+      borrowerAccount.lamports,
+      borrowerInitialBalance +
+      offerAmount.toNumber() -
+      (minimumBalanceForRentExemption +
+        minimumBalanceForRentExemptionForOfferAccount * 2)
+    );
+
+    const vaultAssetTokenAccount = await getAccount(
+      provider.connection,
+      vaultAsset
+    );
+
+    const borrowerAssetTokenAccount = await getAccount(
+      provider.connection,
+      borrowerAssetAccount
+    );
+
+    assert.strictEqual(vaultAssetTokenAccount.amount.toString(), "1");
+    assert.strictEqual(borrowerAssetTokenAccount.amount.toString(), "0");
   });
 
 });
